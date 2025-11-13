@@ -1003,64 +1003,79 @@
         });
         
         
-        // --- MQTT Connection Logic ---
 
-        // Configuration for LIVE data
-        const MQTT_BROKER = "broker.hivemq.com"; 
-        const MQTT_PORT = 8000; // ✅ Correct WebSocket port for HiveMQ
+            // --- MQTT CONFIGURATION (Netlify-ready) ---
+        const MQTT_BROKER = "broker.hivemq.com";
+        const MQTT_PORT = 8884; // Secure WebSocket port
+        const MQTT_PATH = "/mqtt"; // Required path
         const MQTT_TOPIC = "hope/iot_project/student181";
         const MQTT_CLIENT_ID = "web-client-" + Math.floor(Math.random() * 100000);
 
-        const client = new Paho.MQTT.Client(MQTT_BROKER, Number(MQTT_PORT), "/mqtt", MQTT_CLIENT_ID);
+        // Create MQTT client
+        const client = new Paho.MQTT.Client(MQTT_BROKER, MQTT_PORT, MQTT_PATH, MQTT_CLIENT_ID);
 
+        // --- CALLBACKS ---
         client.onConnectionLost = onConnectionLost;
         client.onMessageArrived = onMessageArrived;
 
+        // --- CONNECT FUNCTION ---
         function startConnect() {
-            updateConnectionStatus('connecting');
-            console.log(`Connecting to MQTT (WebSocket ${MQTT_BROKER}:${MQTT_PORT}/mqtt)...`);
-            
-            client.connect({
-                onSuccess: onConnect,
-                onFailure: (err) => { 
-                    console.error("Connection failed:", err);
-                    updateConnectionStatus('lost', err.errorMessage);
-                    setTimeout(startConnect, 5000); // Retry after 5s
-                },
-                useSSL: false // no SSL for public broker
-            });
+        if (client.isConnected()) {
+            console.log("⚠️ Already connected — skipping reconnect.");
+            return;
         }
 
+        updateConnectionStatus('connecting');
+        console.log(`Connecting securely to wss://${MQTT_BROKER}:${MQTT_PORT}${MQTT_PATH} ...`);
+
+        client.connect({
+            onSuccess: onConnect,
+            onFailure: (err) => { 
+                console.error("❌ Connection failed:", err);
+                updateConnectionStatus('lost', err.errorMessage);
+                setTimeout(startConnect, 5000);
+            },
+            useSSL: true
+        });
+        }
+
+        // --- SUCCESS HANDLER ---
         function onConnect() {
-            updateConnectionStatus('connected');
-            console.log("Connected to MQTT!");
-            client.subscribe(MQTT_TOPIC);
-            console.log("Subscribed to:", MQTT_TOPIC);
+        console.log("✅ Connected securely to HiveMQ!");
+        updateConnectionStatus('connected');
+        client.subscribe(MQTT_TOPIC);
+        console.log("📡 Subscribed to:", MQTT_TOPIC);
         }
 
+        // --- CONNECTION LOST HANDLER ---
         function onConnectionLost(responseObject) {
-            if (responseObject.errorCode !== 0) {
-                console.log("Connection lost:", responseObject.errorMessage);
-                updateConnectionStatus('lost', responseObject.errorMessage);
-            }
-            setTimeout(startConnect, 5000); // Attempt to reconnect
+        if (responseObject.errorCode !== 0) {
+            console.warn("⚠️ Connection lost:", responseObject.errorMessage);
+            updateConnectionStatus('lost', responseObject.errorMessage);
+        }
+        console.log("🔄 Reconnecting in 5s...");
+        setTimeout(startConnect, 5000);
         }
 
-        // When message arrives
+        // --- MESSAGE RECEIVED HANDLER ---
         function onMessageArrived(message) {
-            console.log("Message arrived:", message.payloadString);
-            try {
-                const data = JSON.parse(message.payloadString);
-
-                if (data && data.temperature != null && data.humidity != null) {
-                    updateLiveDashboard(data);
-                } else {
-                    console.warn("Received invalid data:", data);
-                }
-            } catch (e) {
-                console.error("Error parsing JSON:", e);
+        console.log("📩 Message arrived:", message.payloadString);
+        try {
+            const data = JSON.parse(message.payloadString);
+            if (data && data.temperature != null && data.humidity != null) {
+                updateLiveDashboard(data);
+            } else {
+                console.warn("⚠️ Invalid data:", data);
             }
+        } catch (e) {
+            console.error("❌ JSON parse error:", e);
         }
+        }
+
+
+
+
+
 
 
 
