@@ -102,15 +102,58 @@
         .toggle-label {
             transition: all 0.2s ease-in-out;
         }
+        
+        /* Mobile Specific Styles for Sidebar */
+        #sidebar {
+            /* Mobile default state: hidden off-canvas */
+            transform: translateX(-100%);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            z-index: 30; /* Higher than main content */
+        }
+
+        /* Desktop state: visible and takes up space */
+        @media (min-width: 768px) {
+            #sidebar {
+                transform: translateX(0); /* Always visible */
+                position: relative; /* Takes up space in the flex container */
+                min-height: 100vh;
+            }
+        }
+
+        /* Mobile open state (toggled by JS) */
+        .is-sidebar-open #sidebar {
+            transform: translateX(0);
+        }
+        .is-sidebar-open #sidebar-overlay {
+            opacity: 0.5;
+            pointer-events: auto; /* Enable click to close */
+        }
     </style>
 </head>
 <body class="text-slate-800 bg-slate-100 min-h-screen">
 
+    <!-- Overlay for Mobile Sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black opacity-0 md:hidden z-20 pointer-events-none transition-opacity duration-300"></div>
+
+    <!-- Mobile Header (Visible on screens smaller than md) -->
+    <header id="mobile-header" class="md:hidden bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
+        <div class="flex items-center space-x-2">
+            <i data-lucide="layout-dashboard" class="text-blue-600 w-5 h-5"></i>
+            <span class="text-lg font-bold text-slate-800">Smart Home</span>
+        </div>
+        <button id="mobile-menu-toggle" class="p-1 focus:outline-none">
+            <i data-lucide="menu" class="w-6 h-6 text-slate-700"></i>
+        </button>
+    </header>
+
     <!-- Main Layout Wrapper -->
-    <div class="flex h-screen">
+    <div id="layout-wrapper" class="flex min-h-screen">
         
-        <!-- Fixed Sidebar -->
-        <aside class="w-64 bg-white shadow-lg flex flex-col h-full fixed z-20">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-white shadow-xl flex flex-col transition-transform duration-300">
             <!-- Sidebar Header -->
             <div class="p-6 flex items-center space-x-3 border-b border-slate-200">
                 <i data-lucide="layout-dashboard" class="text-blue-600"></i>
@@ -161,8 +204,8 @@
             </div>
         </aside>
 
-        <!-- Main Content Area (with offset for sidebar) -->
-        <main class="flex-1 ml-64 min-h-screen">
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-1 min-h-screen">
             
             <!-- Page 1: Dashboard (Default Visible) -->
             <div id="page-dashboard" class="page">
@@ -438,8 +481,6 @@
                         </div>
                     </div>
                     
-                    <!-- Card: Appearance (REMOVED) -->
-                    
                     <!-- Save Button -->
                     <div class="md:col-span-2">
                         <button id="save-settings-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center space-x-2 transition-all w-full justify-center">
@@ -520,6 +561,11 @@
         const saveSettingsBtn = document.getElementById('save-settings-btn');
         const toggleEmail = document.getElementById('toggle-email');
         const togglePush = document.getElementById('toggle-push');
+        
+        // Mobile Navigation Elements
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const body = document.body;
         
         // Min/Max tracking
         let maxTempToday = -Infinity;
@@ -906,7 +952,22 @@
                 }
             });
             setTimeout(() => lucide.createIcons(), 0);
+            
+            // Close sidebar on mobile after navigation
+            if (window.innerWidth < 768) {
+                closeMobileSidebar();
+            }
         }
+        
+        // Mobile Sidebar Functions
+        function toggleMobileSidebar() {
+            body.classList.toggle('is-sidebar-open');
+        }
+
+        function closeMobileSidebar() {
+            body.classList.remove('is-sidebar-open');
+        }
+
 
         document.getElementById('sidebar-nav').addEventListener('click', (e) => {
             const link = e.target.closest('a');
@@ -916,6 +977,10 @@
                 showPage(`page-${pageId}`);
             }
         });
+        
+        mobileMenuToggle.addEventListener('click', toggleMobileSidebar);
+        sidebarOverlay.addEventListener('click', closeMobileSidebar);
+
 
         // Mute Button
         deviceCardMuteBtn.addEventListener('click', () => {
@@ -1073,12 +1138,6 @@
         }
 
 
-
-
-
-
-
-
         // --- Start the App ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -1094,6 +1153,20 @@
 
             // Set default theme for charts
             updateChartTheme();
+            
+            // Adjust sidebar visibility based on screen size on load
+            if (window.innerWidth >= 768) {
+                document.getElementById('sidebar').style.transform = 'translateX(0)';
+            }
+        });
+        
+        // Handle resize event to ensure correct desktop state if resized from mobile
+        window.addEventListener('resize', () => {
+             if (window.innerWidth >= 768) {
+                // Ensure sidebar is visible and body class is removed on desktop
+                document.getElementById('sidebar').style.transform = 'translateX(0)';
+                closeMobileSidebar(); 
+            }
         });
         
     </script>
