@@ -411,7 +411,8 @@
                                 <button class="btn-chart px-3 py-1 text-sm font-medium rounded-md" data-range="year">Year</button>
                             </div>
                         </div>
-                        <canvas id="historicalChart" height="120"></canvas>
+                        <!-- UPDATED: Increased canvas height for better mobile visibility -->
+                        <canvas id="historicalChart" height="180"></canvas>
                     </div>
                 </div>
             </div> <!-- End Page 3: History -->
@@ -708,6 +709,11 @@
             },
             options: {
                 responsive: true,
+                // NEW: Enhanced interaction for touch devices
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 scales: {
                     x: {
                         ticks: {
