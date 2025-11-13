@@ -1005,62 +1005,38 @@
         
         // --- MQTT Connection Logic ---
 
-        // Configuration for LIVE data
-        const MQTT_BROKER = "broker.hivemq.com"; 
-        const MQTT_PORT = 8000; // ✅ Correct WebSocket port for HiveMQ
-        const MQTT_TOPIC = "hope/iot_project/student181";
-        const MQTT_CLIENT_ID = "web-client-" + Math.floor(Math.random() * 100000);
+const MQTT_BROKER = "broker.hivemq.com"; 
+const MQTT_PORT = 8884; // ✅ Secure WebSocket port
+const MQTT_TOPIC = "hope/iot_project/student181";
+const MQTT_CLIENT_ID = "web-client-" + Math.floor(Math.random() * 100000);
 
-        const client = new Paho.MQTT.Client(MQTT_BROKER, Number(MQTT_PORT), "/mqtt", MQTT_CLIENT_ID);
+const client = new Paho.MQTT.Client(MQTT_BROKER, Number(MQTT_PORT), "/mqtt", MQTT_CLIENT_ID);
 
-        client.onConnectionLost = onConnectionLost;
-        client.onMessageArrived = onMessageArrived;
+client.onConnectionLost = onConnectionLost;
+client.onMessageArrived = onMessageArrived;
 
-        function startConnect() {
-            updateConnectionStatus('connecting');
-            console.log(`Connecting to MQTT (WebSocket ${MQTT_BROKER}:${MQTT_PORT}/mqtt)...`);
-            
-            client.connect({
-                onSuccess: onConnect,
-                onFailure: (err) => { 
-                    console.error("Connection failed:", err);
-                    updateConnectionStatus('lost', err.errorMessage);
-                    setTimeout(startConnect, 5000); // Retry after 5s
-                },
-                useSSL: false // no SSL for public broker
-            });
-        }
+function startConnect() {
+    updateConnectionStatus('connecting');
+    console.log(`Connecting securely to MQTT (wss://${MQTT_BROKER}:${MQTT_PORT}/mqtt)...`);
+    
+    client.connect({
+        onSuccess: onConnect,
+        onFailure: (err) => { 
+            console.error("Connection failed:", err);
+            updateConnectionStatus('lost', err.errorMessage);
+            setTimeout(startConnect, 5000);
+        },
+        useSSL: true // ✅ must be true for HTTPS sites
+    });
+}
 
-        function onConnect() {
-            updateConnectionStatus('connected');
-            console.log("Connected to MQTT!");
-            client.subscribe(MQTT_TOPIC);
-            console.log("Subscribed to:", MQTT_TOPIC);
-        }
+function onConnect() {
+    updateConnectionStatus('connected');
+    console.log("Connected to MQTT!");
+    client.subscribe(MQTT_TOPIC);
+    console.log("Subscribed to:", MQTT_TOPIC);
+}
 
-        function onConnectionLost(responseObject) {
-            if (responseObject.errorCode !== 0) {
-                console.log("Connection lost:", responseObject.errorMessage);
-                updateConnectionStatus('lost', responseObject.errorMessage);
-            }
-            setTimeout(startConnect, 5000); // Attempt to reconnect
-        }
-
-        // When message arrives
-        function onMessageArrived(message) {
-            console.log("Message arrived:", message.payloadString);
-            try {
-                const data = JSON.parse(message.payloadString);
-
-                if (data && data.temperature != null && data.humidity != null) {
-                    updateLiveDashboard(data);
-                } else {
-                    console.warn("Received invalid data:", data);
-                }
-            } catch (e) {
-                console.error("Error parsing JSON:", e);
-            }
-        }
 
 
 
