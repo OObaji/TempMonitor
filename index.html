@@ -2,21 +2,25 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- CRUCIAL: Updated viewport meta for full mobile compatibility -->
+    <!-- CRUCIAL: Ensures full responsiveness on all devices -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Home Dashboard [LIVE]</title>
     
-    <!-- 1. Load Tailwind CSS -->
+    <!-- 1. Load Tailwind CSS (Styling/Utility Framework) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- 2. Load Chart.js (for our gauges and charts) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- 3. Load Lucide icons -->
+    <!-- 3. Load Lucide icons (Vector Icons) -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- 4. NEW: Load Paho MQTT Client (for connecting) -->
+    <!-- 4. Load Paho MQTT Client (for connecting) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    
+    <!-- 5. Load Firebase SDKs (using compat versions to match your original structure) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     
     <style>
         /* Use a clean, modern font */
@@ -85,6 +89,7 @@
              background-color: #f8fafc; /* bg-slate-50 */
         }
 
+
         .pulse-shadow-red {
              animation: pulse-shadow-red 1.5s infinite;
         }
@@ -108,10 +113,11 @@
         .toggle-label {
             transition: all 0.2s ease-in-out;
         }
-
-        /* FIX: GLOBAL Chart Height Constraint for MOBILE/General View */
+        
+        /* FIX: Global Chart Height Constraint for MOBILE/General View */
+        /* Forces charts to be vertically compact on mobile */
         #liveHistoryChart, #historicalChart {
-            max-height: 250px; /* Reduced max height for better mobile viewing */
+            max-height: 250px; 
         }
         @media (min-width: 1024px) {
             #liveHistoryChart, #historicalChart {
@@ -122,7 +128,7 @@
 </head>
 <body class="text-slate-800 bg-slate-100 min-h-screen">
 
-    <!-- Mobile Menu Overlay (Click to close menu) -->
+    <!-- Mobile Menu Overlay (Click to close menu on mobile) -->
     <div id="mobile-menu-overlay" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300 opacity-0 lg:hidden"></div>
 
     <!-- Main Layout Wrapper -->
@@ -193,7 +199,7 @@
                 <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
                     <div class="flex items-center">
                          <!-- Mobile Menu Button -->
-                        <button id="mobile-menu-btn" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
+                        <button id="mobile-menu-btn-dashboard" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
                             <i data-lucide="menu" class="w-6 h-6"></i>
                         </button>
                         <h1 class="text-xl sm:text-2xl font-bold text-slate-800">Living Room Dashboard</h1>
@@ -201,13 +207,13 @@
                 </div>
 
                 <!-- Dashboard Grid (inside main content) -->
-                <!-- Grid changed to always use 1 column on mobile (default) for large charts -->
+                <!-- Grid defaults to 1 column on mobile, 2 on tablet, 3 on desktop -->
                 <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                     <!-- Card: Temperature Gauge -->
                     <div class="card rounded-lg shadow-md p-6 relative">
                         <h2 class="text-lg font-semibold text-slate-500 text-center mb-4">Live Temperature</h2>
-                        <!-- Full width canvas on mobile forces chart size -->
+                        <!-- Force aspect ratio via wrapper for responsive gauge resizing -->
                         <div class="w-full max-w-sm mx-auto">
                             <canvas id="tempGauge"></canvas>
                             <div id="temp-label" class="chart-label text-blue-600">-- °C</div>
@@ -215,11 +221,11 @@
                         
                         <div class="flex justify-between text-sm text-slate-500 px-4 mt-4">
                             <span class="text-center">
-                                Min (24h):
+                                Min (Threshold):
                                 <strong id="gauge-min-temp" class="block text-slate-700 font-semibold">-- °C</strong>
                             </span>
                             <span class="text-center">
-                                Max (24h):
+                                Max (Threshold):
                                 <strong id="gauge-max-temp" class="block text-slate-700 font-semibold">-- °C</strong>
                             </span>
                         </div>
@@ -228,7 +234,7 @@
                     <!-- Card: Humidity Gauge -->
                     <div class="card rounded-lg shadow-md p-6 relative">
                         <h2 class="text-lg font-semibold text-slate-500 text-center mb-4">Live Humidity</h2>
-                        <!-- Full width canvas on mobile forces chart size -->
+                        <!-- Force aspect ratio via wrapper for responsive gauge resizing -->
                         <div class="w-full max-w-sm mx-auto">
                             <canvas id="humidityGauge"></canvas>
                             <div id="hum-label" class="chart-label text-green-600">-- %</div>
@@ -236,20 +242,19 @@
                         
                         <div class="flex justify-between text-sm text-slate-500 px-4 mt-4">
                             <span class="text-center">
-                                Min (24h):
-                                <strong id="gauge-min-hum" class="block text-slate-700 font-semibold">-- %</strong>
+                                Min (Limit):
+                                <strong id="gauge-min-hum" class="block text-slate-700 font-semibold">0.0 %</strong>
                             </span>
                             <span class="text-center">
-                                Max (24h):
+                                Max (Threshold):
                                 <strong id="gauge-max-hum" class="block text-slate-700 font-semibold">-- %</strong>
                             </span>
                         </div>
                     </div>
                     
                     <!-- Card: Quick Stats -->
-                    <!-- Takes full width on mobile, and 1/2 or 1/3 on larger screens -->
                     <div class="card rounded-lg shadow-md p-6 lg:col-span-1 md:col-span-2">
-                        <h2 class="text-lg font-semibold text-slate-500 mb-4 flex items-center"><i data-lucide="thermometer" class="w-5 h-5 mr-2"></i>Quick Stats (24h)</h2>
+                        <h2 class="text-lg font-semibold text-slate-500 mb-4 flex items-center"><i data-lucide="thermometer" class="w-5 h-5 mr-2"></i>Quick Stats (24h Observed)</h2>
                         <div class="space-y-3">
                             <div class="flex justify-between border-b pb-2">
                                 <span class="text-sm text-slate-500">Current Temp</span>
@@ -260,17 +265,17 @@
                                 <span id="stat-hum" class="text-lg font-bold text-green-600 block">--</span>
                             </div>
                             <div class="flex justify-between pt-2">
-                                <span class="text-sm text-slate-500">Max Temp</span>
+                                <span class="text-sm text-slate-500">Observed Max Temp</span>
                                 <span id="max-temp" class="text-lg font-semibold text-slate-700 block">--</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-sm text-slate-500">Min Temp</span>
+                                <span class="text-sm text-slate-500">Observed Min Temp</span>
                                 <span id="min-temp" class="text-lg font-semibold text-slate-700 block">--</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Live History Chart (Full width on all screens) -->
+                    <!-- Live History Chart (Full width) -->
                     <div class="card rounded-lg shadow-md p-6 md:col-span-full lg:col-span-3">
                         <h2 class="text-lg font-semibold text-slate-500 mb-4">Live Sensor History</h2>
                         <canvas id="liveHistoryChart"></canvas>
@@ -296,7 +301,7 @@
                     </div>
                 </div>
                 
-                <!-- Device Grid (Responsive: 1 column on mobile, 2 on desktop) -->
+                <!-- Device Grid -->
                 <div class="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                     
                     <!-- Device Card: Living Room (Live) -->
@@ -406,7 +411,7 @@
                 <!-- Interactive Historical Chart (MOVED HERE) -->
                 <div class="p-4 sm:p-6">
                     <div class="card rounded-lg shadow-md p-6">
-                        <!-- Responsive button layout: stack on small, row on larger screens -->
+                        <!-- Responsive button layout: flex-1 on mobile -->
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
                             <h2 class="text-lg font-semibold text-slate-500 mb-3 sm:mb-0">Historical Data</h2>
                             <div id="chart-buttons" class="flex space-x-1 bg-slate-200 p-1 rounded-lg w-full sm:w-auto justify-stretch">
@@ -416,7 +421,7 @@
                                 <button class="btn-chart flex-1 px-3 py-1 text-sm font-medium rounded-md" data-range="year">Year</button>
                             </div>
                         </div>
-                        <!-- Full width canvas on mobile for large chart -->
+                        <!-- Full width canvas for large chart -->
                         <canvas id="historicalChart"></canvas>
                     </div>
                 </div>
@@ -580,7 +585,7 @@
         const mobileMenuButtons = document.querySelectorAll('[id^="mobile-menu-btn"]');
         const closeMenuBtn = document.getElementById('close-menu-btn');
         
-        // Min/Max tracking
+        // Min/Max tracking - Initialized to allow first reading to set the true min/max
         let maxTempToday = -Infinity;
         let minTempToday = Infinity;
         let maxHumToday = -Infinity;
@@ -851,17 +856,40 @@
             }, 3000);
         }
 
+        // Function to update the threshold labels on the dashboard (under gauges)
+        function updateThresholdLabels() {
+            gaugeMaxTempEl.innerText = `${MAX_TEMP.toFixed(1)} °C`;
+            gaugeMinTempEl.innerText = `${MIN_TEMP.toFixed(1)} °C`;
+            // Humidity only has a Max threshold in this setup, Min is fixed at 0.0%
+            gaugeMaxHumEl.innerText = `${MAX_HUMIDITY.toFixed(1)} %`;
+        }
+
         // --- Dashboard Update Function ---
         function updateLiveDashboard(data) {
             try {
                 // Since we are getting data, the connection is good
                 if(connectionState !== 'connected') updateConnectionStatus('connected');
 
-                const temp = data.temperature;
-                const hum = data.humidity;
-                const status = data.status;
+                // Ensure data is parsed to floats for comparison
+                const temp = parseFloat(data.temperature);
+                const hum = parseFloat(data.humidity);
+                
+                // 1. Client-side alert validation using the latest, loaded threshold values
+                let currentStatus = 'normal';
 
-                // 1. Update Gauges
+                // Check Temperature thresholds (using MAX_TEMP and MIN_TEMP global variables)
+                if (temp > MAX_TEMP || temp < MIN_TEMP) {
+                    currentStatus = 'alert';
+                }
+                // Check Humidity threshold (using MAX_HUMIDITY global variable). 
+                // Only change status if it wasn't already set to alert by temperature.
+                if (hum > MAX_HUMIDITY && currentStatus !== 'alert') {
+                    currentStatus = 'alert';
+                }
+
+                console.log(`Client Status Check: Temp ${temp}°C, Hum ${hum}%, Thresholds: T[${MIN_TEMP}-${MAX_TEMP}], H[<${MAX_HUMIDITY}]. Result: ${currentStatus}`);
+
+                // 2. Update Gauges
                 // We use Math.max(0, ...) to ensure the gauge fill percentage is never negative
                 tempGauge.data.datasets[0].data = [temp, Math.max(0, 50 - temp)];
                 tempLabel.innerText = `${temp.toFixed(1)}°C`;
@@ -871,11 +899,11 @@
                 humLabel.innerText = `${hum.toFixed(1)}%`;
                 humidityGauge.update('none');
                 
-                // 2. Update Status Panel (in Sidebar)
+                // 3. Update Status Panel (in Sidebar and Device Card)
                 deviceStatusDot.classList.remove('bg-slate-400', 'bg-green-500', 'pulse-red');
                 deviceCardLivingRoom.classList.remove('pulse-shadow-red');
 
-                if (status === 'alert') {
+                if (currentStatus === 'alert') {
                     // Set text and ALERT styles
                     deviceStatusText.innerText = 'ALERT';
                     deviceStatusText.classList.add('text-red-600');
@@ -894,7 +922,7 @@
                     deviceCardMuteBtn.disabled = false;
                     deviceCardMuteBtn.classList.remove('hidden', 'btn-disabled');
                     
-                } else if (status === 'normal') {
+                } else if (currentStatus === 'normal') {
                     // Set text and NORMAL styles
                     deviceStatusText.innerText = 'Online';
                     deviceStatusText.classList.add('text-green-600');
@@ -913,11 +941,11 @@
                     deviceCardMuteBtn.disabled = true;
                 }
                 
-                // Update device card live data
+                // 4. Update device card live data
                 deviceCardTemp.innerText = `${temp.toFixed(1)} °C`;
                 deviceCardHum.innerText = `${hum.toFixed(1)} %`;
 
-                // 3. Update Quick Stats & Gauge Min/Max
+                // 5. Update Quick Stats (Observed Min/Max)
                 if (temp > maxTempToday) maxTempToday = temp;
                 if (temp < minTempToday) minTempToday = temp;
                 if (hum > maxHumToday) maxHumToday = hum;
@@ -927,13 +955,10 @@
                 statHumEl.innerText = `${hum.toFixed(1)}%`;
                 maxTempEl.innerText = `${maxTempToday.toFixed(1)} °C`;
                 minTempEl.innerText = `${minTempToday.toFixed(1)} °C`;
-                
-                gaugeMaxTempEl.innerText = `${maxTempToday.toFixed(1)} °C`;
-                gaugeMinTempEl.innerText = `${minTempToday.toFixed(1)} °C`;
-                gaugeMaxHumEl.innerText = `${maxHumToday.toFixed(1)} %`;
-                gaugeMinHumEl.innerText = `${minHumToday.toFixed(1)} %`;
 
-                // 4. Update Live History Chart
+                // NOTE: Threshold labels under gauges are updated via updateThresholdLabels() after settings load/save.
+                
+                // 6. Update Live History Chart
                 const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                 liveHistoryChart.data.labels.push(now);
                 liveHistoryChart.data.datasets[0].data.push(temp.toFixed(1));
@@ -952,9 +977,9 @@
             }
         }
         
-        // --- Event Listeners ---
+        // --- Event Listeners: Navigation and UI ---
         
-        // Page Navigation
+        // Page Navigation (Hidden logic)
         function showPage(pageId) {
             pages.forEach(page => page.classList.add('hidden'));
             const targetPage = document.getElementById(pageId);
@@ -967,7 +992,6 @@
                     link.classList.add('nav-link-active');
                 }
             });
-            // Close mobile menu after navigation
             closeMobileMenu();
             setTimeout(() => lucide.createIcons(), 0);
         }
@@ -980,7 +1004,7 @@
                 showPage(`page-${pageId}`);
             }
         });
-        
+
         // Mobile menu toggle functions
         function openMobileMenu() {
             mobileSidebar.classList.remove('-translate-x-full');
@@ -1041,17 +1065,20 @@
                 }
             });
         }
+        
+        // --- Settings Page UI Initialization Function ---
+        function initializeSettingsUI() {
+            if (maxTempSlider) {
+                maxTempSlider.value = MAX_TEMP;
+                minTempSlider.value = MIN_TEMP;
+                maxHumiSlider.value = MAX_HUMIDITY;
+                maxTempVal.innerText = `${MAX_TEMP.toFixed(1)}°C`;
+                minTempVal.innerText = `${MIN_TEMP.toFixed(1)}°C`;
+                maxHumiVal.innerText = `${MAX_HUMIDITY.toFixed(1)}%`;
+            }
+        }
 
         // --- Settings Page Logic ---
-        if (maxTempSlider) {
-            // Initialize slider values and text based on current configuration
-            maxTempSlider.value = MAX_TEMP;
-            minTempSlider.value = MIN_TEMP;
-            maxHumiSlider.value = MAX_HUMIDITY;
-            maxTempVal.innerText = `${MAX_TEMP.toFixed(1)}°C`;
-            minTempVal.innerText = `${MIN_TEMP.toFixed(1)}°C`;
-            maxHumiVal.innerText = `${MAX_HUMIDITY.toFixed(1)}%`;
-        }
         maxTempSlider?.addEventListener('input', (e) => {
             maxTempVal.innerText = `${parseFloat(e.target.value).toFixed(1)}°C`;
         });
@@ -1069,16 +1096,30 @@
             MAX_HUMIDITY = parseFloat(maxHumiSlider.value);
             
             console.log("New settings saved LOCALLY:", { MAX_TEMP, MIN_TEMP, MAX_HUMIDITY });
+            
+            // 1.5. Update dashboard labels immediately
+            updateThresholdLabels();
 
-            // --- MQTT PUBLISHING LOGIC to update device thresholds (Improved Robustness) ---
-            const commandTopic = MQTT_TOPIC + "/set_thresholds";
             const settingsPayload = {
                 max_temp: MAX_TEMP,
                 min_temp: MIN_TEMP,
                 max_hum: MAX_HUMIDITY
             };
             const payloadString = JSON.stringify(settingsPayload);
+            const commandTopic = MQTT_TOPIC + "/set_thresholds";
+            const settingsRef = db.collection("settings").doc("alerts"); // Firestore document reference
 
+            // 2. Save settings to Firestore for persistence
+            settingsRef.set(settingsPayload)
+                .then(() => {
+                    console.log("✅ Thresholds successfully saved to Firestore.");
+                })
+                .catch((error) => {
+                    console.error("❌ Error saving thresholds to Firestore:", error);
+                });
+
+
+            // 3. Publish settings via MQTT
             try {
                 if (typeof client !== 'undefined' && client.isConnected()) {
                     // Explicitly create message object for robustness
@@ -1088,10 +1129,9 @@
                     
                     client.send(message);
 
-                    // LOG ADDED HERE: Console confirmation of MQTT send
+                    // Console confirmation of MQTT send
                     console.log(`✅ MQTT Sent Thresholds to topic ${commandTopic}: ${payloadString}`);
                     
-                    // IMPORTANT: We clarify to the user that they must wait for the device to respond.
                     showToast("Settings saved and thresholds sent to device! Waiting for device status update..."); 
                 } else {
                     showToast("Settings saved locally, but device connection is lost. Cannot send thresholds.");
@@ -1101,7 +1141,6 @@
                 console.error("Failed to send SET_THRESHOLD command:", e);
                 showToast("Settings saved, but error sending command to device. Check console for details.");
             }
-            // --- END IMPROVED LOGIC ---
         });
         
         toggleEmail?.addEventListener('click', () => {
@@ -1119,23 +1158,8 @@
             }
         });
         
-        // --- FIREBASE AND MQTT CONFIGURATION (UNCHANGED LOGIC) ---
-        // I kept your original Firebase and MQTT setup logic exactly as you provided it.
+        // --- FIREBASE AND MQTT INITIALIZATION ---
         
-        // <!-- Firebase SDK (Original includes retained) -->
-        // <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js"></script>
-        // <!-- // <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js"></script> -->
-
-        <!-- Firebase App (core) -->
-        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-        <!-- Firestore -->
-        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-
-        <!-- MQTT SDK -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-
-        <script>
         // 1️⃣ Initialize Firebase FIRST
         const firebaseConfig = {
             apiKey: "AIzaSyDfClRcIk21FbPyvrmsuOsoVaK0ifVnXbI",
@@ -1144,7 +1168,36 @@
         };
 
         const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore(); // ✅ This must exist before MQTT messages
+        const db = firebase.firestore(); // Consistent usage of firebase.firestore()
+
+        // Function to load settings from Firestore
+        function loadSettingsFromFirestore() {
+            const settingsRef = db.collection("settings").doc("alerts");
+
+            settingsRef.get().then(doc => {
+                if (doc.exists) {
+                    const savedSettings = doc.data();
+                    // Update global JS variables with saved values, using defaults as fallback
+                    MAX_TEMP = parseFloat(savedSettings.max_temp) || MAX_TEMP;
+                    MIN_TEMP = parseFloat(savedSettings.min_temp) || MIN_TEMP;
+                    MAX_HUMIDITY = parseFloat(savedSettings.max_hum) || MAX_HUMIDITY;
+                    console.log("✅ Loaded settings from Firestore:", { MAX_TEMP, MIN_TEMP, MAX_HUMIDITY });
+                } else {
+                    console.log("⚠️ No saved settings found in Firestore. Using global defaults.");
+                }
+                
+                // Initialize the UI elements now that settings are loaded (or defaulted)
+                initializeSettingsUI();
+                // Update the dashboard labels with the loaded thresholds
+                updateThresholdLabels();
+
+            }).catch(error => {
+                console.error("❌ Error loading settings from Firestore:", error);
+                // Fallback: Use defaults if loading fails
+                initializeSettingsUI();
+                updateThresholdLabels();
+            });
+        }
 
         // Optional: Firestore live listener for last 10 messages
         db.collection("sensorData")
@@ -1156,11 +1209,12 @@
                     console.log("📡 Cloud Data:", data);
 
                     // OPTIONAL: Update your dashboard UI
+                    // Note: This trigger handles the live update of the dashboard based on incoming data.
                     updateLiveDashboard(data);
                 });
             });
 
-        // 2️⃣ MQTT CONFIGURATION (Netlify-ready)
+        // 2️⃣ MQTT CONFIGURATION
         const MQTT_BROKER = "broker.hivemq.com";
         const MQTT_PORT = 8884; // Secure WebSocket port
         const MQTT_PATH = "/mqtt"; // Required path
@@ -1215,27 +1269,34 @@
 
         // --- MESSAGE RECEIVED HANDLER ---
         function onMessageArrived(message) {
-            const payload = JSON.parse(message.payloadString);
-            console.log("Incoming MQTT:", payload);
+            try {
+                const payload = JSON.parse(message.payloadString);
+                console.log("Incoming MQTT:", payload);
 
-            // Save to Firestore
-            db.collection("sensorData").add({
-                temperature: payload.temperature,
-                humidity: payload.humidity,
-                status: payload.status,
-                timestamp: new Date().toISOString(),
-            })
-            .then(() => console.log("✅ Saved to Firestore"))
-            .catch(err => console.error("❌ Firestore error:", err));
+                // Save to Firestore
+                db.collection("sensorData").add({
+                    temperature: payload.temperature,
+                    humidity: payload.humidity,
+                    status: payload.status,
+                    timestamp: new Date().toISOString(),
+                })
+                .then(() => console.log("✅ Saved to Firestore"))
+                .catch(err => console.error("❌ Firestore error:", err));
 
-            // Update dashboard UI immediately
-            updateLiveDashboard(payload);
+                // Update dashboard UI immediately
+                updateLiveDashboard(payload);
+            } catch (e) {
+                console.error("Error parsing or processing MQTT message:", e);
+            }
         }
 
         // --- Start the App ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             
+            // Load and apply persistent settings from Firestore before connecting
+            loadSettingsFromFirestore();
+
             // Start the LIVE MQTT connection AFTER Firebase is ready
             startConnect(); 
             
@@ -1248,7 +1309,6 @@
             // Set default theme for charts
             updateChartTheme();
         });
-        </script>
     </script>
 
 
