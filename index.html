@@ -102,58 +102,15 @@
         .toggle-label {
             transition: all 0.2s ease-in-out;
         }
-        
-        /* Mobile Specific Styles for Sidebar */
-        #sidebar {
-            /* Mobile default state: hidden off-canvas */
-            transform: translateX(-100%);
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100%;
-            z-index: 30; /* Higher than main content */
-        }
-
-        /* Desktop state: visible and takes up space */
-        @media (min-width: 768px) {
-            #sidebar {
-                transform: translateX(0); /* Always visible */
-                position: relative; /* Takes up space in the flex container */
-                min-height: 100vh;
-            }
-        }
-
-        /* Mobile open state (toggled by JS) */
-        .is-sidebar-open #sidebar {
-            transform: translateX(0);
-        }
-        .is-sidebar-open #sidebar-overlay {
-            opacity: 0.5;
-            pointer-events: auto; /* Enable click to close */
-        }
     </style>
 </head>
 <body class="text-slate-800 bg-slate-100 min-h-screen">
 
-    <!-- Overlay for Mobile Sidebar -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black opacity-0 md:hidden z-20 pointer-events-none transition-opacity duration-300"></div>
-
-    <!-- Mobile Header (Visible on screens smaller than md) -->
-    <header id="mobile-header" class="md:hidden bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
-        <div class="flex items-center space-x-2">
-            <i data-lucide="layout-dashboard" class="w-5 h-5 text-blue-600"></i>
-            <span class="text-lg font-bold text-slate-800">Smart Home</span>
-        </div>
-        <button id="mobile-menu-toggle" class="p-1 focus:outline-none">
-            <i data-lucide="menu" class="w-6 h-6 text-slate-700"></i>
-        </button>
-    </header>
-
     <!-- Main Layout Wrapper -->
-    <div id="layout-wrapper" class="flex min-h-screen">
+    <div class="flex h-screen">
         
-        <!-- Sidebar -->
-        <aside id="sidebar" class="w-64 bg-white shadow-xl flex flex-col transition-transform duration-300">
+        <!-- Fixed Sidebar -->
+        <aside class="w-64 bg-white shadow-lg flex flex-col h-full fixed z-20">
             <!-- Sidebar Header -->
             <div class="p-6 flex items-center space-x-3 border-b border-slate-200">
                 <i data-lucide="layout-dashboard" class="text-blue-600"></i>
@@ -204,8 +161,8 @@
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main id="main-content" class="flex-1 min-h-screen">
+        <!-- Main Content Area (with offset for sidebar) -->
+        <main class="flex-1 ml-64 min-h-screen">
             
             <!-- Page 1: Dashboard (Default Visible) -->
             <div id="page-dashboard" class="page">
@@ -411,8 +368,7 @@
                                 <button class="btn-chart px-3 py-1 text-sm font-medium rounded-md" data-range="year">Year</button>
                             </div>
                         </div>
-                        <!-- UPDATED: Increased canvas height for better mobile visibility -->
-                        <canvas id="historicalChart" height="180"></canvas>
+                        <canvas id="historicalChart" height="120"></canvas>
                     </div>
                 </div>
             </div> <!-- End Page 3: History -->
@@ -481,6 +437,8 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Card: Appearance (REMOVED) -->
                     
                     <!-- Save Button -->
                     <div class="md:col-span-2">
@@ -562,11 +520,6 @@
         const saveSettingsBtn = document.getElementById('save-settings-btn');
         const toggleEmail = document.getElementById('toggle-email');
         const togglePush = document.getElementById('toggle-push');
-        
-        // Mobile Navigation Elements
-        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        const body = document.body;
         
         // Min/Max tracking
         let maxTempToday = -Infinity;
@@ -709,19 +662,8 @@
             },
             options: {
                 responsive: true,
-                // NEW: Enhanced interaction for touch devices
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
                 scales: {
-                    x: {
-                        ticks: {
-                            autoSkip: true, // Essential for mobile to prevent label crowding
-                            maxRotation: 0, // Keeps labels flat for better reading
-                            minRotation: 0
-                        }
-                    },
+                    x: {},
                     yTemp: { 
                         type: 'linear',
                         position: 'left',
@@ -777,7 +719,6 @@
         // --- Function to create historical sample data ---
         function updateHistoricalChart(timeRange) {
             console.log(`Generating sample data for: ${timeRange}`);
-            const now = new Date();
             const newLabels = [];
             const newTempData = [];
             const newHumData = [];
@@ -788,57 +729,32 @@
                 for (let i = 0; i < numPoints; i++) {
                     let seasonalEffect = Math.sin((i / (numPoints / seasonalFactor)) * Math.PI) * 8 + baseVal;
                     let randomNoise = (Math.random() - 0.5) * noise;
-                    data.push(parseFloat((seasonalEffect + randomNoise).toFixed(1)));
+                    data.push((seasonalEffect + randomNoise).toFixed(1));
                 }
                 return data;
             };
 
-            // --- Updated logic for detailed and readable date labels ---
             switch (timeRange) {
-                case 'hour': // Last 6 hours, sampled every 30 minutes (12 points)
-                    const hourPoints = 12;
-                    // Format: "14:30"
-                    const dateHourFormatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: false }); 
-                    for (let i = hourPoints - 1; i >= 0; i--) {
-                        const date = new Date(now.getTime() - i * 30 * 60000); // Backwards 30 mins
-                        newLabels.push(dateHourFormatter.format(date));
-                    }
-                    newTempData.push(...generateTrend(hourPoints, 22, 1, 1));
-                    newHumData.push(...generateTrend(hourPoints, 45, 1, 3));
+                case 'hour':
+                    for (let i = 0; i < 60; i += 5) { newLabels.push(`-${60-i}m`); } // Labels: -60m, -55m...
+                    newTempData.push(...generateTrend(12, 22, 1, 1));
+                    newHumData.push(...generateTrend(12, 45, 1, 3));
                     break;
-                case 'day': // Last 7 days, sampled once per day (7 points)
-                    const dayPoints = 7;
-                    // Format: "Thu, Nov 13"
-                    const dateDayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                    for (let i = dayPoints - 1; i >= 0; i--) {
-                        const date = new Date(now.getTime() - i * 24 * 60 * 60000); // Backwards 1 day
-                        newLabels.push(dateDayFormatter.format(date));
-                    }
-                    newTempData.push(...generateTrend(dayPoints, 20, 1, 2));
-                    newHumData.push(...generateTrend(dayPoints, 50, 1, 5));
+                case 'day':
+                    for (let i = 0; i < 24; i += 2) { newLabels.push(`${String(i).padStart(2, '0')}:00`); } // Labels: 00:00, 02:00...
+                    newTempData.push(...generateTrend(12, 20, 1, 2));
+                    newHumData.push(...generateTrend(12, 50, 1, 5));
                     break;
-                case 'month': // Last 12 months, sampled once per month (12 points)
-                    const monthPoints = 12;
-                    // Format: "Nov 2025"
-                    const dateMonthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' });
-                    for (let i = monthPoints - 1; i >= 0; i--) {
-                        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                        newLabels.push(dateMonthFormatter.format(date));
-                    }
-                    newTempData.push(...generateTrend(monthPoints, 18, 2, 3));
-                    newHumData.push(...generateTrend(monthPoints, 55, 2, 5));
+                case 'month':
+                    for (let i = 1; i <= 30; i += 3) { newLabels.push(`Day ${i}`); } // Labels: Day 1, Day 4...
+                    newTempData.push(...generateTrend(10, 18, 2, 3));
+                    newHumData.push(...generateTrend(10, 55, 2, 5));
                     break;
-                case 'year': // Last 5 years, sampled once per year (5 points)
+                case 'year':
                 default:
-                    const yearPoints = 5;
-                    // Format: "2025"
-                    const dateYearFormatter = new Intl.DateTimeFormat('en-US', { year: 'numeric' });
-                    for (let i = yearPoints - 1; i >= 0; i--) {
-                        const date = new Date(now.getFullYear() - i, 0, 1);
-                        newLabels.push(dateYearFormatter.format(date));
-                    }
-                    newTempData.push(...generateTrend(yearPoints, 15, 2, 2)); // Strong seasonal trend
-                    newHumData.push(...generateTrend(yearPoints, 50, 1, 5));
+                    newLabels.push('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
+                    newTempData.push(...generateTrend(12, 15, 2, 2)); // Strong seasonal trend
+                    newHumData.push(...generateTrend(12, 50, 1, 5));
                     break;
             }
 
@@ -990,22 +906,7 @@
                 }
             });
             setTimeout(() => lucide.createIcons(), 0);
-            
-            // Close sidebar on mobile after navigation
-            if (window.innerWidth < 768) {
-                closeMobileSidebar();
-            }
         }
-        
-        // Mobile Sidebar Functions
-        function toggleMobileSidebar() {
-            body.classList.toggle('is-sidebar-open');
-        }
-
-        function closeMobileSidebar() {
-            body.classList.remove('is-sidebar-open');
-        }
-
 
         document.getElementById('sidebar-nav').addEventListener('click', (e) => {
             const link = e.target.closest('a');
@@ -1015,10 +916,6 @@
                 showPage(`page-${pageId}`);
             }
         });
-        
-        mobileMenuToggle.addEventListener('click', toggleMobileSidebar);
-        sidebarOverlay.addEventListener('click', closeMobileSidebar);
-
 
         // Mute Button
         deviceCardMuteBtn.addEventListener('click', () => {
@@ -1161,19 +1058,36 @@
         }
 
         // --- MESSAGE RECEIVED HANDLER ---
+        
+        // function onMessageArrived(message) {
+        // console.log("📩 Message arrived:", message.payloadString);
+        // try {
+        //     const data = JSON.parse(message.payloadString);
+        //     if (data && data.temperature != null && data.humidity != null) {
+        //         updateLiveDashboard(data);
+        //     } else {
+        //         console.warn("⚠️ Invalid data:", data);
+        //     }
+        // } catch (e) {
+        //     console.error("❌ JSON parse error:", e);
+        // }
+        // }
+
         function onMessageArrived(message) {
-        console.log("📩 Message arrived:", message.payloadString);
-        try {
-            const data = JSON.parse(message.payloadString);
-            if (data && data.temperature != null && data.humidity != null) {
-                updateLiveDashboard(data);
-            } else {
-                console.warn("⚠️ Invalid data:", data);
-            }
-        } catch (e) {
-            console.error("❌ JSON parse error:", e);
+        const payload = JSON.parse(message.payloadString);
+        console.log("Incoming:", payload);
+
+        db.collection("sensorData").add({
+        temperature: payload.temperature,
+        humidity: payload.humidity,
+        timestamp: new Date().toISOString(),
+        })
+        .then(() => console.log("✅ Saved to Firestore"))
+        .catch(err => console.error("❌ Firestore error:", err));
         }
-        }
+
+
+
 
 
         // --- Start the App ---
@@ -1191,23 +1105,40 @@
 
             // Set default theme for charts
             updateChartTheme();
-            
-            // Adjust sidebar visibility based on screen size on load
-            if (window.innerWidth >= 768) {
-                document.getElementById('sidebar').style.transform = 'translateX(0)';
-            }
-        });
-        
-        // Handle resize event to ensure correct desktop state if resized from mobile
-        window.addEventListener('resize', () => {
-             if (window.innerWidth >= 768) {
-                // Ensure sidebar is visible and body class is removed on desktop
-                document.getElementById('sidebar').style.transform = 'translateX(0)';
-                closeMobileSidebar(); 
-            }
         });
         
     </script>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDfClRcIk21FbPyvrmsuOsoVaK0ifVnXbI",
+        authDomain: "temp-monitor-315d7.firebaseapp.com",
+        projectId: "temp-monitor-315d7",
+      };
+
+      // Initialize Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+
+      // 2️⃣ Firestore live listener (Step 4)
+      db.collection("sensorData")
+        .orderBy("timestamp", "desc")
+        .limit(10)
+        .onSnapshot(snapshot => {
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            console.log("📡 Cloud Data:", data);
+
+            // OPTIONAL: Update your dashboard UI here
+            updateLiveDashboard(data);
+          });
+        });
+    </script>
+
 
 </body>
 </html>
