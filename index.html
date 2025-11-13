@@ -89,13 +89,25 @@
              background-color: #f8fafc; /* bg-slate-50 */
         }
 
-
+        /* Styling for the pulse effect on the device card */
         .pulse-shadow-red {
              animation: pulse-shadow-red 1.5s infinite;
         }
         @keyframes pulse-shadow-red {
             0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
             70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+
+        /* NEW: Styling for the full-screen alert feedback */
+        .alert-pulse-border {
+            /* Apply a border with transition for visual feedback */
+            border: 4px solid transparent;
+            animation: alert-pulse 1.5s infinite;
+        }
+        @keyframes alert-pulse {
+            0% { border-color: rgba(239, 68, 68, 0.3); }
+            50% { border-color: rgba(239, 68, 68, 0.7); }
+            100% { border-color: rgba(239, 68, 68, 0.3); }
         }
 
         /* Toggle Switch styles */
@@ -193,321 +205,339 @@
         <!-- Main Content Area (with responsive offset for sidebar) -->
         <main class="flex-1 w-full lg:ml-64 min-h-screen">
             
-            <!-- Page 1: Dashboard (Default Visible) -->
-            <div id="page-dashboard" class="page">
-                <!-- Responsive Header for main content -->
-                <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
-                    <div class="flex items-center">
-                         <!-- Mobile Menu Button -->
-                        <button id="mobile-menu-btn-dashboard" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
-                            <i data-lucide="menu" class="w-6 h-6"></i>
-                        </button>
-                        <h1 class="text-xl sm:text-2xl font-bold text-slate-800">Living Room Dashboard</h1>
-                    </div>
-                </div>
-
-                <!-- Dashboard Grid (inside main content) -->
-                <!-- Grid defaults to 1 column on mobile, 2 on tablet, 3 on desktop -->
-                <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                    <!-- Card: Temperature Gauge -->
-                    <div class="card rounded-lg shadow-md p-6 relative">
-                        <h2 class="text-lg font-semibold text-slate-500 text-center mb-4">Live Temperature</h2>
-                        <!-- Force aspect ratio via wrapper for responsive gauge resizing -->
-                        <div class="w-full max-w-sm mx-auto">
-                            <canvas id="tempGauge"></canvas>
-                            <div id="temp-label" class="chart-label text-blue-600">-- °C</div>
-                        </div>
-                        
-                        <div class="flex justify-between text-sm text-slate-500 px-4 mt-4">
-                            <span class="text-center">
-                                Min (Threshold):
-                                <strong id="gauge-min-temp" class="block text-slate-700 font-semibold">-- °C</strong>
-                            </span>
-                            <span class="text-center">
-                                Max (Threshold):
-                                <strong id="gauge-max-temp" class="block text-slate-700 font-semibold">-- °C</strong>
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Card: Humidity Gauge -->
-                    <div class="card rounded-lg shadow-md p-6 relative">
-                        <h2 class="text-lg font-semibold text-slate-500 text-center mb-4">Live Humidity</h2>
-                        <!-- Force aspect ratio via wrapper for responsive gauge resizing -->
-                        <div class="w-full max-w-sm mx-auto">
-                            <canvas id="humidityGauge"></canvas>
-                            <div id="hum-label" class="chart-label text-green-600">-- %</div>
-                        </div>
-                        
-                        <div class="flex justify-between text-sm text-slate-500 px-4 mt-4">
-                            <span class="text-center">
-                                Min (Limit):
-                                <strong id="gauge-min-hum" class="block text-slate-700 font-semibold">0.0 %</strong>
-                            </span>
-                            <span class="text-center">
-                                Max (Threshold):
-                                <strong id="gauge-max-hum" class="block text-slate-700 font-semibold">-- %</strong>
-                            </span>
+            <!-- NEW: Wrapper for the global alert pulse feedback -->
+            <div id="alert-container" class="min-h-full">
+            
+                <!-- Page 1: Dashboard (Default Visible) -->
+                <div id="page-dashboard" class="page">
+                    <!-- Responsive Header for main content -->
+                    <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
+                        <div class="flex items-center">
+                            <!-- Mobile Menu Button -->
+                            <button id="mobile-menu-btn-dashboard" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
+                                <i data-lucide="menu" class="w-6 h-6"></i>
+                            </button>
+                            <h1 class="text-xl sm:text-2xl font-bold text-slate-800">Living Room Dashboard</h1>
                         </div>
                     </div>
                     
-                    <!-- Card: Quick Stats -->
-                    <div class="card rounded-lg shadow-md p-6 lg:col-span-1 md:col-span-2">
-                        <h2 class="text-lg font-semibold text-slate-500 mb-4 flex items-center"><i data-lucide="thermometer" class="w-5 h-5 mr-2"></i>Quick Stats (24h Observed)</h2>
-                        <div class="space-y-3">
-                            <div class="flex justify-between border-b pb-2">
-                                <span class="text-sm text-slate-500">Current Temp</span>
-                                <span id="stat-temp" class="text-lg font-bold text-blue-600 block">--</span>
+                    <!-- Persistent Alert Notification Banner -->
+                    <div id="alert-banner" class="hidden mx-4 sm:mx-6 mt-4 p-4 bg-red-100 border border-red-400 text-red-800 rounded-lg shadow-md" role="alert">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center">
+                                <i data-lucide="alert-triangle" class="w-5 h-5 mr-3 flex-shrink-0"></i>
+                                <span id="alert-message" class="font-medium text-sm sm:text-base"></span>
                             </div>
-                            <div class="flex justify-between border-b pb-2">
-                                <span class="text-sm text-slate-500">Current Humi</span>
-                                <span id="stat-hum" class="text-lg font-bold text-green-600 block">--</span>
-                            </div>
-                            <div class="flex justify-between pt-2">
-                                <span class="text-sm text-slate-500">Observed Max Temp</span>
-                                <span id="max-temp" class="text-lg font-semibold text-slate-700 block">--</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-sm text-slate-500">Observed Min Temp</span>
-                                <span id="min-temp" class="text-lg font-semibold text-slate-700 block">--</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Live History Chart (Full width) -->
-                    <div class="card rounded-lg shadow-md p-6 md:col-span-full lg:col-span-3">
-                        <h2 class="text-lg font-semibold text-slate-500 mb-4">Live Sensor History</h2>
-                        <canvas id="liveHistoryChart"></canvas>
-                    </div>
-
-                </div>
-            </div> <!-- End Page 1: Dashboard -->
-
-            <!-- Page 2: Devices (Hidden by default) -->
-            <div id="page-devices" class="page hidden">
-                <!-- Header -->
-                <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
-                    <div class="flex justify-between items-center">
-                        <!-- Mobile Menu Button -->
-                        <button id="mobile-menu-btn-devices" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
-                            <i data-lucide="menu" class="w-6 h-6"></i>
-                        </button>
-                        <h1 class="text-xl sm:text-2xl font-bold text-slate-800 flex-1">Device Management</h1>
-                        <button id="add-device-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 sm:px-4 rounded-lg flex items-center space-x-2 transition-all text-sm">
-                            <i data-lucide="plus" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                            <span class="hidden sm:inline">Add Device</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Device Grid -->
-                <div class="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    <!-- Device Card: Living Room (Live) -->
-                    <div id="device-card-livingroom" class="card rounded-lg shadow-md p-6 transition-all duration-300">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center space-x-3">
-                                <i data-lucide="home" class="w-6 h-6 text-blue-500"></i>
-                                <h2 class="text-xl font-semibold text-slate-700">Living Room Sensor</h2>
-                            </div>
-                            <span id="device-card-status-dot" class="w-3 h-3 rounded-full bg-slate-400 mt-2" title="Status"></span>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Status</span>
-                                <span id="device-card-status-text" class="font-semibold text-slate-600">--</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Temperature</span>
-                                <span id="device-card-temp" class="font-semibold text-slate-600">-- °C</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Humidity</span>
-                                <span id="device-card-hum" class="font-semibold text-slate-600">-- %</span>
-                            </div>
-                        </div>
-                        <!-- Mute Button (appears on alert) -->
-                        <div class="mt-4 pt-4 border-t border-slate-200">
-                            <button id="device-card-mute-btn" class="hidden bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center space-x-2 transition-all text-sm w-full justify-center" title="Mute Buzzer">
-                                <i data-lucide="bell-off" class="w-4 h-4"></i>
-                                <span>Mute Buzzer</span>
+                            <button id="alert-dismiss-btn" class="p-1 -mr-1 rounded-md hover:bg-red-200 transition-colors">
+                                <i data-lucide="x" class="w-5 h-5 text-red-600"></i>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Device Card: Kitchen (Sample) -->
-                    <div class="card rounded-lg shadow-md p-6">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center space-x-3">
-                                <i data-lucide="chef-hat" class="w-6 h-6 text-green-500"></i>
-                                <h2 class="text-xl font-semibold text-slate-700">Kitchen Smart Plug</h2>
+                    <!-- Dashboard Grid (inside main content) -->
+                    <!-- Grid defaults to 1 column on mobile, 2 on tablet, 3 on desktop -->
+                    <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                        <!-- Card: Temperature Gauge -->
+                        <div class="card rounded-lg shadow-md p-6 relative">
+                            <h2 class="text-lg font-semibold text-slate-500 text-center mb-4">Live Temperature</h2>
+                            <!-- Force aspect ratio via wrapper for responsive gauge resizing -->
+                            <div class="w-full max-w-sm mx-auto">
+                                <canvas id="tempGauge"></canvas>
+                                <div id="temp-label" class="chart-label text-blue-600">-- °C</div>
                             </div>
-                            <span class="w-3 h-3 rounded-full bg-green-500 mt-2" title="Online"></span>
+                            
+                            <div class="flex justify-between text-sm text-slate-500 px-4 mt-4">
+                                <span class="text-center">
+                                    Min (Threshold):
+                                    <strong id="gauge-min-temp" class="block text-slate-700 font-semibold">-- °C</strong>
+                                </span>
+                                <span class="text-center">
+                                    Max (Threshold):
+                                    <strong id="gauge-max-temp" class="block text-slate-700 font-semibold">-- °C</strong>
+                                </span>
+                            </div>
                         </div>
-                        <div class="space-y-3">
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Status</span>
-                                <span class="font-semibold text-green-600">Online</span>
+
+                        <!-- Card: Humidity Gauge -->
+                        <div class="card rounded-lg shadow-md p-6 relative">
+                            <h2 class="text-lg font-semibold text-slate-500 text-center mb-4">Live Humidity</h2>
+                            <!-- Force aspect ratio via wrapper for responsive gauge resizing -->
+                            <div class="w-full max-w-sm mx-auto">
+                                <canvas id="humidityGauge"></canvas>
+                                <div id="hum-label" class="chart-label text-green-600">-- %</div>
                             </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Power Usage</span>
-                                <span class="font-semibold text-slate-600">45 W</span>
+                            
+                            <div class="flex justify-between text-sm text-slate-500 px-4 mt-4">
+                                <span class="text-center">
+                                    Min (Limit):
+                                    <strong id="gauge-min-hum" class="block text-slate-700 font-semibold">0.0 %</strong>
+                                </span>
+                                <span class="text-center">
+                                    Max (Threshold):
+                                    <strong id="gauge-max-hum" class="block text-slate-700 font-semibold">-- %</strong>
+                                </span>
                             </div>
                         </div>
-                        <!-- Simulated Toggle -->
-                        <div class="mt-4 pt-4 border-t border-slate-200">
-                            <div class="flex justify-between items-center">
-                                <span class="font-medium text-slate-700">Toggle Power</span>
-                                <div class="relative inline-block w-10 align-middle">
-                                    <input type="checkbox" name="toggle" id="toggle-kitchen" class="toggle-checkbox absolute opacity-0 w-0 h-0"/>
-                                    <label for="toggle-kitchen" class="toggle-label block h-6 w-10 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out">
-                                        <span class="toggle-circle absolute left-0 top-0 w-6 h-6 rounded-full bg-white border-4 border-gray-300 shadow transform transition-transform duration-200 ease-in-out"></span>
-                                    </label>
+                        
+                        <!-- Card: Quick Stats -->
+                        <div class="card rounded-lg shadow-md p-6 lg:col-span-1 md:col-span-2">
+                            <h2 class="text-lg font-semibold text-slate-500 mb-4 flex items-center"><i data-lucide="thermometer" class="w-5 h-5 mr-2"></i>Quick Stats (24h Observed)</h2>
+                            <div class="space-y-3">
+                                <div class="flex justify-between border-b pb-2">
+                                    <span class="text-sm text-slate-500">Current Temp</span>
+                                    <span id="stat-temp" class="text-lg font-bold text-blue-600 block">--</span>
+                                </div>
+                                <div class="flex justify-between border-b pb-2">
+                                    <span class="text-sm text-slate-500">Current Humi</span>
+                                    <span id="stat-hum" class="text-lg font-bold text-green-600 block">--</span>
+                                </div>
+                                <div class="flex justify-between pt-2">
+                                    <span class="text-sm text-slate-500">Observed Max Temp</span>
+                                    <span id="max-temp" class="text-lg font-semibold text-slate-700 block">--</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-sm text-slate-500">Observed Min Temp</span>
+                                    <span id="min-temp" class="text-lg font-semibold text-slate-700 block">--</span>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Device Card: Bedroom (Sample) -->
-                    <div class="card rounded-lg shadow-md p-6 opacity-60">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center space-x-3">
-                                <i data-lucide="bed" class="w-6 h-6 text-slate-400"></i>
-                                <h2 class="text-xl font-semibold text-slate-700">Bedroom Sensor</h2>
-                            </div>
-                            <span class="w-3 h-3 rounded-full bg-slate-400 mt-2" title="Offline"></span>
+                        <!-- Live History Chart (Full width) -->
+                        <div class="card rounded-lg shadow-md p-6 md:col-span-full lg:col-span-3">
+                            <h2 class="text-lg font-semibold text-slate-500 mb-4">Live Sensor History</h2>
+                            <canvas id="liveHistoryChart"></canvas>
                         </div>
-                        <div class="space-y-3">
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Status</span>
-                                <span class="font-semibold text-slate-500">Offline</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Temperature</span>
-                                <span class="font-semibold text-slate-500">-- °C</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Humidity</span>
-                                <span class="font-semibold text-slate-500">-- %</span>
-                            </div>
-                        </div>
-                    </div>
 
-                </div>
-            </div> <!-- End Page 2: Devices -->
-
-            <!-- Page 3: History (Hidden by default) -->
-            <div id="page-history" class="page hidden">
-                <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
-                    <div class="flex items-center">
-                        <!-- Mobile Menu Button -->
-                        <button id="mobile-menu-btn-history" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
-                            <i data-lucide="menu" class="w-6 h-6"></i>
-                        </button>
-                        <h1 class="text-xl sm:text-2xl font-bold text-slate-800">History & Analytics</h1>
                     </div>
-                </div>
-                <!-- Interactive Historical Chart (MOVED HERE) -->
-                <div class="p-4 sm:p-6">
-                    <div class="card rounded-lg shadow-md p-6">
-                        <!-- Responsive button layout: flex-1 on mobile -->
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                            <h2 class="text-lg font-semibold text-slate-500 mb-3 sm:mb-0">Historical Data</h2>
-                            <div id="chart-buttons" class="flex space-x-1 bg-slate-200 p-1 rounded-lg w-full sm:w-auto justify-stretch">
-                                <button class="btn-chart flex-1 px-3 py-1 text-sm font-medium rounded-md" data-range="hour">Hour</button>
-                                <button class="btn-chart flex-1 px-3 py-1 text-sm font-medium rounded-md" data-range="day">Day</button>
-                                <button class="btn-chart flex-1 px-3 py-1 text-sm font-medium rounded-md" data-range="month">Month</button>
-                                <button class="btn-chart flex-1 px-3 py-1 text-sm font-medium rounded-md" data-range="year">Year</button>
+                </div> <!-- End Page 1: Dashboard -->
+
+                <!-- Page 2: Devices (Hidden by default) -->
+                <div id="page-devices" class="page hidden">
+                    <!-- Header -->
+                    <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
+                        <div class="flex justify-between items-center">
+                            <!-- Mobile Menu Button -->
+                            <button id="mobile-menu-btn-devices" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
+                                <i data-lucide="menu" class="w-6 h-6"></i>
+                            </button>
+                            <h1 class="text-xl sm:text-2xl font-bold text-slate-800 flex-1">Device Management</h1>
+                            <button id="add-device-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 sm:px-4 rounded-lg flex items-center space-x-2 transition-all text-sm">
+                                <i data-lucide="plus" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                                <span class="hidden sm:inline">Add Device</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Device Grid -->
+                    <div class="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        
+                        <!-- Device Card: Living Room (Live) -->
+                        <div id="device-card-livingroom" class="card rounded-lg shadow-md p-6 transition-all duration-300">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center space-x-3">
+                                    <i data-lucide="home" class="w-6 h-6 text-blue-500"></i>
+                                    <h2 class="text-xl font-semibold text-slate-700">Living Room Sensor</h2>
+                                </div>
+                                <span id="device-card-status-dot" class="w-3 h-3 rounded-full bg-slate-400 mt-2" title="Status"></span>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Status</span>
+                                    <span id="device-card-status-text" class="font-semibold text-slate-600">--</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Temperature</span>
+                                    <span id="device-card-temp" class="font-semibold text-slate-600">-- °C</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Humidity</span>
+                                    <span id="device-card-hum" class="font-semibold text-slate-600">-- %</span>
+                                </div>
+                            </div>
+                            <!-- Mute Button (appears on alert) -->
+                            <div class="mt-4 pt-4 border-t border-slate-200">
+                                <button id="device-card-mute-btn" class="hidden bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center space-x-2 transition-all text-sm w-full justify-center" title="Mute Buzzer">
+                                    <i data-lucide="bell-off" class="w-4 h-4"></i>
+                                    <span>Mute Buzzer</span>
+                                </button>
                             </div>
                         </div>
-                        <!-- Full width canvas for large chart -->
-                        <canvas id="historicalChart"></canvas>
+
+                        <!-- Device Card: Kitchen (Sample) -->
+                        <div class="card rounded-lg shadow-md p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center space-x-3">
+                                    <i data-lucide="chef-hat" class="w-6 h-6 text-green-500"></i>
+                                    <h2 class="text-xl font-semibold text-slate-700">Kitchen Smart Plug</h2>
+                                </div>
+                                <span class="w-3 h-3 rounded-full bg-green-500 mt-2" title="Online"></span>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Status</span>
+                                    <span class="font-semibold text-green-600">Online</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Power Usage</span>
+                                    <span class="font-semibold text-slate-600">45 W</span>
+                                </div>
+                            </div>
+                            <!-- Simulated Toggle -->
+                            <div class="mt-4 pt-4 border-t border-slate-200">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-medium text-slate-700">Toggle Power</span>
+                                    <div class="relative inline-block w-10 align-middle">
+                                        <input type="checkbox" name="toggle" id="toggle-kitchen" class="toggle-checkbox absolute opacity-0 w-0 h-0"/>
+                                        <label for="toggle-kitchen" class="toggle-label block h-6 w-10 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out">
+                                            <span class="toggle-circle absolute left-0 top-0 w-6 h-6 rounded-full bg-white border-4 border-gray-300 shadow transform transition-transform duration-200 ease-in-out"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Device Card: Bedroom (Sample) -->
+                        <div class="card rounded-lg shadow-md p-6 opacity-60">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center space-x-3">
+                                    <i data-lucide="bed" class="w-6 h-6 text-slate-400"></i>
+                                    <h2 class="text-xl font-semibold text-slate-700">Bedroom Sensor</h2>
+                                </div>
+                                <span class="w-3 h-3 rounded-full bg-slate-400 mt-2" title="Offline"></span>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Status</span>
+                                    <span class="font-semibold text-slate-500">Offline</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Temperature</span>
+                                    <span class="font-semibold text-slate-500">-- °C</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Humidity</span>
+                                    <span class="font-semibold text-slate-500">-- %</span>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
-                </div>
-            </div> <!-- End Page 3: History -->
-            
-            <!-- Page 4: Settings (Hidden by default) -->
-            <div id="page-settings" class="page hidden">
-                <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
-                    <div class="flex items-center">
-                        <!-- Mobile Menu Button -->
-                        <button id="mobile-menu-btn-settings" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
-                            <i data-lucide="menu" class="w-6 h-6"></i>
-                        </button>
-                        <h1 class="text-xl sm:text-2xl font-bold text-slate-800">Settings</h1>
+                </div> <!-- End Page 2: Devices -->
+
+                <!-- Page 3: History (Hidden by default) -->
+                <div id="page-history" class="page hidden">
+                    <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
+                        <div class="flex items-center">
+                            <!-- Mobile Menu Button -->
+                            <button id="mobile-menu-btn-history" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
+                                <i data-lucide="menu" class="w-6 h-6"></i>
+                            </button>
+                            <h1 class="text-xl sm:text-2xl font-bold text-slate-800">History & Analytics</h1>
+                        </div>
                     </div>
-                </div>
+                    <!-- Interactive Historical Chart (MOVED HERE) -->
+                    <div class="p-4 sm:p-6">
+                        <div class="card rounded-lg shadow-md p-6">
+                            <!-- Responsive button layout: flex-1 on mobile -->
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                                <h2 class="text-lg font-semibold text-slate-500 mb-3 sm:mb-0">Historical Data</h2>
+                                <div id="chart-buttons" class="flex space-x-1 bg-slate-200 p-1 rounded-lg w-full sm:w-auto justify-stretch">
+                                    <button class="btn-chart flex-1 px-3 py-1 text-sm font-medium rounded-md" data-range="hour">Hour</button>
+                                    <button class="btn-chart flex-1 px-3 py-1 text-sm font-medium rounded-md" data-range="day">Day</button>
+                                    <button class="btn-chart flex-1 px-3 py-1 text-sm font-medium rounded-md" data-range="month">Month</button>
+                                    <button class="btn-chart flex-1 px-3 py-1 text-sm font-medium rounded-md" data-range="year">Year</button>
+                                </div>
+                            </div>
+                            <!-- Full width canvas for large chart -->
+                            <canvas id="historicalChart"></canvas>
+                        </div>
+                    </div>
+                </div> <!-- End Page 3: History -->
                 
-                <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Card: Alert Thresholds -->
-                    <div class="card rounded-lg shadow-md p-6">
-                        <h2 class="text-xl font-semibold text-slate-700 mb-4">Alert Thresholds</h2>
-                        <div class="space-y-4">
-                            <!-- Max Temp Slider -->
-                            <div>
-                                <label for="max-temp-slider" class="flex justify-between text-sm font-medium text-slate-600">
-                                    <span>Max Temperature</span>
-                                    <span id="max-temp-val" class="font-bold">26.0°C</span>
-                                </label>
-                                <input id="max-temp-slider" type="range" min="20" max="40" step="0.5" class="w-full mt-1 accent-blue-600">
-                            </div>
-                            <!-- Min Temp Slider -->
-                            <div>
-                                <label for="min-temp-slider" class="flex justify-between text-sm font-medium text-slate-600">
-                                    <span>Min Temperature</span>
-                                    <span id="min-temp-val" class="font-bold">18.0°C</span>
-                                </label>
-                                <input id="min-temp-slider" type="range" min="10" max="25" step="0.5" class="w-full mt-1 accent-blue-600">
-                            </div>
-                            <!-- Max Humi Slider -->
-                            <div>
-                                <label for="max-humi-slider" class="flex justify-between text-sm font-medium text-slate-600">
-                                    <span>Max Humidity</span>
-                                    <span id="max-humi-val" class="font-bold">60.0%</span>
-                                </label>
-                                <input id="max-humi-slider" type="range" min="40" max="80" step="1" class="w-full mt-1 accent-green-600">
-                            </div>
+                <!-- Page 4: Settings (Hidden by default) -->
+                <div id="page-settings" class="page hidden">
+                    <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
+                        <div class="flex items-center">
+                            <!-- Mobile Menu Button -->
+                            <button id="mobile-menu-btn-settings" class="lg:hidden mr-4 p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
+                                <i data-lucide="menu" class="w-6 h-6"></i>
+                            </button>
+                            <h1 class="text-xl sm:text-2xl font-bold text-slate-800">Settings</h1>
                         </div>
                     </div>
                     
-                    <!-- Card: Notifications -->
-                    <div class="card rounded-lg shadow-md p-6">
-                        <h2 class="text-xl font-semibold text-slate-700 mb-4">Notification Preferences</h2>
-                        <div class="space-y-4">
-                            <!-- Email Alerts -->
-                            <div class="flex justify-between items-center">
-                                <span class="font-medium text-slate-700">Email Alerts</span>
-                                <div class="relative inline-block w-10 align-middle">
-                                    <input type="checkbox" name="toggle" id="toggle-email" class="toggle-checkbox absolute opacity-0 w-0 h-0"/>
-                                    <label for="toggle-email" class="toggle-label block h-6 w-10 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out">
-                                        <span class="toggle-circle absolute left-0 top-0 w-6 h-6 rounded-full bg-white border-4 border-gray-300 shadow transform transition-transform duration-200 ease-in-out"></span>
+                    <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Card: Alert Thresholds -->
+                        <div class="card rounded-lg shadow-md p-6">
+                            <h2 class="text-xl font-semibold text-slate-700 mb-4">Alert Thresholds</h2>
+                            <div class="space-y-4">
+                                <!-- Max Temp Slider -->
+                                <div>
+                                    <label for="max-temp-slider" class="flex justify-between text-sm font-medium text-slate-600">
+                                        <span>Max Temperature</span>
+                                        <span id="max-temp-val" class="font-bold">26.0°C</span>
                                     </label>
+                                    <input id="max-temp-slider" type="range" min="20" max="40" step="0.5" class="w-full mt-1 accent-blue-600">
                                 </div>
-                            </div>
-                            <!-- Push Notifications -->
-                            <div class="flex justify-between items-center">
-                                <span class="font-medium text-slate-700">Push Notifications</span>
-                                <div class="relative inline-block w-10 align-middle">
-                                    <input type="checkbox" name="toggle" id="toggle-push" class="toggle-checkbox absolute opacity-0 w-0 h-0" checked/>
-                                    <label for="toggle-push" class="toggle-label block h-6 w-10 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out">
-                                        <span class="toggle-circle absolute left-0 top-0 w-6 h-6 rounded-full bg-white border-4 border-gray-300 shadow transform transition-transform duration-200 ease-in-out"></span>
+                                <!-- Min Temp Slider -->
+                                <div>
+                                    <label for="min-temp-slider" class="flex justify-between text-sm font-medium text-slate-600">
+                                        <span>Min Temperature</span>
+                                        <span id="min-temp-val" class="font-bold">18.0°C</span>
                                     </label>
+                                    <input id="min-temp-slider" type="range" min="10" max="25" step="0.5" class="w-full mt-1 accent-blue-600">
+                                </div>
+                                <!-- Max Humi Slider -->
+                                <div>
+                                    <label for="max-humi-slider" class="flex justify-between text-sm font-medium text-slate-600">
+                                        <span>Max Humidity</span>
+                                        <span id="max-humi-val" class="font-bold">60.0%</span>
+                                    </label>
+                                    <input id="max-humi-slider" type="range" min="40" max="80" step="1" class="w-full mt-1 accent-green-600">
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Save Button -->
-                    <div class="md:col-span-2">
-                        <button id="save-settings-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center space-x-2 transition-all w-full justify-center shadow-lg hover:shadow-xl">
-                            <i data-lucide="save" class="w-5 h-5"></i>
-                            <span>Save All Settings</span>
-                        </button>
-                    </div>
+                        
+                        <!-- Card: Notifications -->
+                        <div class="card rounded-lg shadow-md p-6">
+                            <h2 class="text-xl font-semibold text-slate-700 mb-4">Notification Preferences</h2>
+                            <div class="space-y-4">
+                                <!-- Email Alerts -->
+                                <div class="flex justify-between items-center">
+                                    <span class="font-medium text-slate-700">Email Alerts</span>
+                                    <div class="relative inline-block w-10 align-middle">
+                                        <input type="checkbox" name="toggle" id="toggle-email" class="toggle-checkbox absolute opacity-0 w-0 h-0"/>
+                                        <label for="toggle-email" class="toggle-label block h-6 w-10 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out">
+                                            <span class="toggle-circle absolute left-0 top-0 w-6 h-6 rounded-full bg-white border-4 border-gray-300 shadow transform transition-transform duration-200 ease-in-out"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <!-- Push Notifications -->
+                                <div class="flex justify-between items-center">
+                                    <span class="font-medium text-slate-700">Push Notifications</span>
+                                    <div class="relative inline-block w-10 align-middle">
+                                        <input type="checkbox" name="toggle" id="toggle-push" class="toggle-checkbox absolute opacity-0 w-0 h-0" checked/>
+                                        <label for="toggle-push" class="toggle-label block h-6 w-10 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out">
+                                            <span class="toggle-circle absolute left-0 top-0 w-6 h-6 rounded-full bg-white border-4 border-gray-300 shadow transform transition-transform duration-200 ease-in-out"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Save Button -->
+                        <div class="md:col-span-2">
+                            <button id="save-settings-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center space-x-2 transition-all w-full justify-center shadow-lg hover:shadow-xl">
+                                <i data-lucide="save" class="w-5 h-5"></i>
+                                <span>Save All Settings</span>
+                            </button>
+                        </div>
 
-                </div>
-            </div> <!-- End Page 4: Settings -->
+                    </div>
+                </div> <!-- End Page 4: Settings -->
+
+            </div> <!-- End #alert-container -->
 
         </main>
     </div>
@@ -525,6 +555,9 @@
         let MIN_TEMP = 18.0;
         let MAX_TEMP = 26.0;
         let MAX_HUMIDITY = 60.0;
+        
+        // NEW STATE VARIABLE: Tracks if an alert is currently active to prevent duplicate notifications
+        let isAlertActive = false;
         
         const MAX_LIVE_DATA_POINTS = 30; // How many points to show on the live history chart
         const SETTINGS_DOC_REF = "settings/alerts";
@@ -565,6 +598,12 @@
         const toast = document.getElementById('toast');
         const addDeviceBtn = document.getElementById('add-device-btn');
         const kitchenToggle = document.getElementById('toggle-kitchen');
+        
+        // NEW: Alert Container and Banner elements
+        const alertContainer = document.getElementById('alert-container');
+        const alertBanner = document.getElementById('alert-banner');
+        const alertMessageEl = document.getElementById('alert-message');
+        const alertDismissBtn = document.getElementById('alert-dismiss-btn');
 
         // Page navigation elements
         const pages = document.querySelectorAll('.page');
@@ -786,22 +825,52 @@
         // This function checks the incoming data against the current global threshold variables
         function checkLiveAlerts(temp, hum) {
             let currentStatus = 'normal';
+            const alertReasons = [];
 
-            // Check Temperature thresholds
-            if (temp > MAX_TEMP || temp < MIN_TEMP) {
-                currentStatus = 'alert';
+            // 1. Check Thresholds and collect reasons
+            if (temp > MAX_TEMP) {
+                alertReasons.push(`Max Temperature threshold (${MAX_TEMP.toFixed(1)}°C) exceeded`);
+            } else if (temp < MIN_TEMP) {
+                alertReasons.push(`Min Temperature threshold (${MIN_TEMP.toFixed(1)}°C) violated`);
             }
-            // Check Humidity threshold
-            if (hum > MAX_HUMIDITY && currentStatus !== 'alert') {
+            if (hum > MAX_HUMIDITY) {
+                alertReasons.push(`Max Humidity threshold (${MAX_HUMIDITY.toFixed(1)}%) exceeded`);
+            }
+            
+            if (alertReasons.length > 0) {
                 currentStatus = 'alert';
             }
             
             // Console log for debugging the client-side decision
             console.log(`Client Status Check: Temp ${temp.toFixed(1)}°C, Hum ${hum.toFixed(1)}%, Thresholds: T[${MIN_TEMP}-${MAX_TEMP}], H[<${MAX_HUMIDITY}]. Result: ${currentStatus}`);
             
-            // Update Status Panel (in Sidebar and Device Card)
+            // 2. Manage UI Alerts and State
+            
+            // Toggle the full-screen visual alert feedback
+            if (currentStatus === 'alert') {
+                alertContainer.classList.add('alert-pulse-border');
+            } else {
+                alertContainer.classList.remove('alert-pulse-border');
+            }
+            
+            // Persistent Banner Notification Logic (Edge Triggered)
+            if (currentStatus === 'alert' && !isAlertActive) {
+                isAlertActive = true;
+                const reasonMsg = alertReasons.join(' and ');
+                const timestamp = new Date().toLocaleTimeString();
+                
+                alertMessageEl.innerHTML = `<strong>🚨 ALERT at ${timestamp}:</strong> ${reasonMsg}.`;
+                alertBanner.classList.remove('hidden');
+                
+            } else if (currentStatus === 'normal') {
+                isAlertActive = false;
+            }
+
+
+            // 3. Update Sidebar and Device Card Status
             deviceStatusDot.classList.remove('bg-slate-400', 'bg-green-500', 'pulse-red');
             deviceCardLivingRoom.classList.remove('pulse-shadow-red');
+
 
             if (currentStatus === 'alert') {
                 // Set text and ALERT styles
@@ -888,9 +957,8 @@
             gaugeMaxTempEl.innerText = `${MAX_TEMP.toFixed(1)} °C`;
             gaugeMinTempEl.innerText = `${MIN_TEMP.toFixed(1)} °C`;
             gaugeMaxHumEl.innerText = `${MAX_HUMIDITY.toFixed(1)} %`;
-            // gaugeMinHumEl.innerText remains 0.0 % as per design
             
-            // 4. Send command to hardware immediately
+            // 4. Send command to hardware immediately (unless skipped on load)
             if (!skipHardware && client.isConnected()) {
                 sendControlCommand(MAX_TEMP, MIN_TEMP, MAX_HUMIDITY);
             }
@@ -996,7 +1064,7 @@
                 humLabel.innerText = `${hum.toFixed(1)}%`;
                 humidityGauge.update('none');
                 
-                // 2. Perform Client-Side Alert Check and update UI status (red/green dot)
+                // 2. Perform Client-Side Alert Check and update UI status (red/green dot, pulsing border)
                 checkLiveAlerts(temp, hum);
 
                 // 3. Update device card live data
@@ -1162,6 +1230,12 @@
             deviceCardMuteBtn.classList.add('hidden');
             deviceCardMuteBtn.disabled = true;
         });
+        
+        // Alert Dismiss Button
+        alertDismissBtn.addEventListener('click', () => {
+            alertBanner.classList.add('hidden');
+        });
+
 
         // Other interactive buttons
         addDeviceBtn.addEventListener('click', () => showToast("Feature coming soon!"));
