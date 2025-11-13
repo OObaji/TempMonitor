@@ -1068,7 +1068,7 @@
             MIN_TEMP = parseFloat(minTempSlider.value);
             MAX_HUMIDITY = parseFloat(maxHumiSlider.value);
             
-            console.log("New settings saved:", { MAX_TEMP, MIN_TEMP, MAX_HUMIDITY });
+            console.log("New settings saved LOCALLY:", { MAX_TEMP, MIN_TEMP, MAX_HUMIDITY });
 
             // --- MQTT PUBLISHING LOGIC to update device thresholds (Improved Robustness) ---
             const commandTopic = MQTT_TOPIC + "/set_thresholds";
@@ -1087,6 +1087,10 @@
                     message.qos = 0; // QoS 0 (fire and forget)
                     
                     client.send(message);
+
+                    // LOG ADDED HERE: Console confirmation of MQTT send
+                    console.log(`✅ MQTT Sent Thresholds to topic ${commandTopic}: ${payloadString}`);
+                    
                     // IMPORTANT: We clarify to the user that they must wait for the device to respond.
                     showToast("Settings saved and thresholds sent to device! Waiting for device status update..."); 
                 } else {
