@@ -109,13 +109,13 @@
             transition: all 0.2s ease-in-out;
         }
 
-        /* FIX: GLOBAL Chart Height Constraint to prevent excessive stretching on all screens */
+        /* FIX: GLOBAL Chart Height Constraint for MOBILE/General View */
         #liveHistoryChart, #historicalChart {
-            max-height: 400px; /* Max height for charts on small screens */
+            max-height: 250px; /* Reduced max height for better mobile viewing */
         }
         @media (min-width: 1024px) {
             #liveHistoryChart, #historicalChart {
-                max-height: 300px; /* Override for a more compact desktop view */
+                max-height: 300px; /* Slightly taller for compact desktop view */
             }
         }
     </style>
@@ -422,7 +422,7 @@
                 </div>
             </div> <!-- End Page 3: History -->
             
-            <!-- Page 4: Settings (No longer under construction) -->
+            <!-- Page 4: Settings (Hidden by default) -->
             <div id="page-settings" class="page hidden">
                 <div class="p-4 sm:p-6 border-b border-slate-200 bg-white shadow-sm sticky top-0 z-10">
                     <div class="flex items-center">
