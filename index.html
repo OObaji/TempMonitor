@@ -1004,140 +1004,128 @@
         
         
 
-            // --- MQTT CONFIGURATION (Netlify-ready) ---
-        const MQTT_BROKER = "broker.hivemq.com";
-        const MQTT_PORT = 8884; // Secure WebSocket port
-        const MQTT_PATH = "/mqtt"; // Required path
-        const MQTT_TOPIC = "hope/iot_project/student181";
-        const MQTT_CLIENT_ID = "web-client-" + Math.floor(Math.random() * 100000);
+           <!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js"></script>
 
-        // Create MQTT client
-        const client = new Paho.MQTT.Client(MQTT_BROKER, MQTT_PORT, MQTT_PATH, MQTT_CLIENT_ID);
+<!-- MQTT SDK -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 
-        // --- CALLBACKS ---
-        client.onConnectionLost = onConnectionLost;
-        client.onMessageArrived = onMessageArrived;
+<script>
+  // 1️⃣ Initialize Firebase FIRST
+  const firebaseConfig = {
+    apiKey: "AIzaSyDfClRcIk21FbPyvrmsuOsoVaK0ifVnXbI",
+    authDomain: "temp-monitor-315d7.firebaseapp.com",
+    projectId: "temp-monitor-315d7",
+  };
 
-        // --- CONNECT FUNCTION ---
-        function startConnect() {
-        if (client.isConnected()) {
-            console.log("⚠️ Already connected — skipping reconnect.");
-            return;
-        }
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore(); // ✅ This must exist before MQTT messages
 
-        updateConnectionStatus('connecting');
-        console.log(`Connecting securely to wss://${MQTT_BROKER}:${MQTT_PORT}${MQTT_PATH} ...`);
+  // Optional: Firestore live listener for last 10 messages
+  db.collection("sensorData")
+    .orderBy("timestamp", "desc")
+    .limit(10)
+    .onSnapshot(snapshot => {
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        console.log("📡 Cloud Data:", data);
 
-        client.connect({
-            onSuccess: onConnect,
-            onFailure: (err) => { 
-                console.error("❌ Connection failed:", err);
-                updateConnectionStatus('lost', err.errorMessage);
-                setTimeout(startConnect, 5000);
-            },
-            useSSL: true
-        });
-        }
+        // OPTIONAL: Update your dashboard UI
+        updateLiveDashboard(data);
+      });
+    });
 
-        // --- SUCCESS HANDLER ---
-        function onConnect() {
-        console.log("✅ Connected securely to HiveMQ!");
-        updateConnectionStatus('connected');
-        client.subscribe(MQTT_TOPIC);
-        console.log("📡 Subscribed to:", MQTT_TOPIC);
-        }
+  // 2️⃣ MQTT CONFIGURATION (Netlify-ready)
+  const MQTT_BROKER = "broker.hivemq.com";
+  const MQTT_PORT = 8884; // Secure WebSocket port
+  const MQTT_PATH = "/mqtt"; // Required path
+  const MQTT_TOPIC = "hope/iot_project/student181";
+  const MQTT_CLIENT_ID = "web-client-" + Math.floor(Math.random() * 100000);
 
-        // --- CONNECTION LOST HANDLER ---
-        function onConnectionLost(responseObject) {
-        if (responseObject.errorCode !== 0) {
-            console.warn("⚠️ Connection lost:", responseObject.errorMessage);
-            updateConnectionStatus('lost', responseObject.errorMessage);
-        }
-        console.log("🔄 Reconnecting in 5s...");
+  // Create MQTT client
+  const client = new Paho.MQTT.Client(MQTT_BROKER, MQTT_PORT, MQTT_PATH, MQTT_CLIENT_ID);
+
+  // --- CALLBACKS ---
+  client.onConnectionLost = onConnectionLost;
+  client.onMessageArrived = onMessageArrived;
+
+  // --- CONNECT FUNCTION ---
+  function startConnect() {
+    if (client.isConnected()) {
+      console.log("⚠️ Already connected — skipping reconnect.");
+      return;
+    }
+
+    updateConnectionStatus('connecting');
+    console.log(`Connecting securely to wss://${MQTT_BROKER}:${MQTT_PORT}${MQTT_PATH} ...`);
+
+    client.connect({
+      onSuccess: onConnect,
+      onFailure: (err) => { 
+        console.error("❌ Connection failed:", err);
+        updateConnectionStatus('lost', err.errorMessage);
         setTimeout(startConnect, 5000);
-        }
+      },
+      useSSL: true
+    });
+  }
 
-        // --- MESSAGE RECEIVED HANDLER ---
-        
-        // function onMessageArrived(message) {
-        // console.log("📩 Message arrived:", message.payloadString);
-        // try {
-        //     const data = JSON.parse(message.payloadString);
-        //     if (data && data.temperature != null && data.humidity != null) {
-        //         updateLiveDashboard(data);
-        //     } else {
-        //         console.warn("⚠️ Invalid data:", data);
-        //     }
-        // } catch (e) {
-        //     console.error("❌ JSON parse error:", e);
-        // }
-        // }
+  // --- SUCCESS HANDLER ---
+  function onConnect() {
+    console.log("✅ Connected securely to HiveMQ!");
+    updateConnectionStatus('connected');
+    client.subscribe(MQTT_TOPIC);
+    console.log("📡 Subscribed to:", MQTT_TOPIC);
+  }
 
-        function onMessageArrived(message) {
-        const payload = JSON.parse(message.payloadString);
-        console.log("Incoming:", payload);
+  // --- CONNECTION LOST HANDLER ---
+  function onConnectionLost(responseObject) {
+    if (responseObject.errorCode !== 0) {
+      console.warn("⚠️ Connection lost:", responseObject.errorMessage);
+      updateConnectionStatus('lost', responseObject.errorMessage);
+    }
+    console.log("🔄 Reconnecting in 5s...");
+    setTimeout(startConnect, 5000);
+  }
 
-        db.collection("sensorData").add({
-        temperature: payload.temperature,
-        humidity: payload.humidity,
-        timestamp: new Date().toISOString(),
-        })
-        .then(() => console.log("✅ Saved to Firestore"))
-        .catch(err => console.error("❌ Firestore error:", err));
-        }
+  // --- MESSAGE RECEIVED HANDLER ---
+  function onMessageArrived(message) {
+    const payload = JSON.parse(message.payloadString);
+    console.log("Incoming MQTT:", payload);
 
+    // Save to Firestore
+    db.collection("sensorData").add({
+      temperature: payload.temperature,
+      humidity: payload.humidity,
+      status: payload.status,
+      timestamp: new Date().toISOString(),
+    })
+    .then(() => console.log("✅ Saved to Firestore"))
+    .catch(err => console.error("❌ Firestore error:", err));
 
+    // Update dashboard UI immediately
+    updateLiveDashboard(payload);
+  }
 
+  // --- Start the App ---
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+    
+    // Start the LIVE MQTT connection AFTER Firebase is ready
+    startConnect(); 
+    
+    // Initialize the historical chart
+    updateHistoricalChart('year'); 
+    
+    // Show the dashboard page by default
+    showPage('page-dashboard');
 
+    // Set default theme for charts
+    updateChartTheme();
+  });
+</script>
 
-        // --- Start the App ---
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            
-            // Start the LIVE MQTT connection
-            startConnect(); 
-            
-            // Initialize the historical chart
-            updateHistoricalChart('year'); 
-            
-            // Show the dashboard page by default
-            showPage('page-dashboard');
-
-            // Set default theme for charts
-            updateChartTheme();
-        });
-        
-    </script>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js"></script>
-
-    <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyDfClRcIk21FbPyvrmsuOsoVaK0ifVnXbI",
-        authDomain: "temp-monitor-315d7.firebaseapp.com",
-        projectId: "temp-monitor-315d7",
-      };
-
-      // Initialize Firebase
-      const app = firebase.initializeApp(firebaseConfig);
-      const db = firebase.firestore();
-
-      // 2️⃣ Firestore live listener (Step 4)
-      db.collection("sensorData")
-        .orderBy("timestamp", "desc")
-        .limit(10)
-        .onSnapshot(snapshot => {
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            console.log("📡 Cloud Data:", data);
-
-            // OPTIONAL: Update your dashboard UI here
-            updateLiveDashboard(data);
-          });
-        });
-    </script>
 
 
 </body>
