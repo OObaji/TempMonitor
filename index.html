@@ -109,10 +109,13 @@
             transition: all 0.2s ease-in-out;
         }
 
-        /* FIX: Desktop Chart Height Constraint to prevent excessive stretching */
+        /* FIX: GLOBAL Chart Height Constraint to prevent excessive stretching on all screens */
+        #liveHistoryChart, #historicalChart {
+            max-height: 400px; /* Max height for charts on small screens */
+        }
         @media (min-width: 1024px) {
             #liveHistoryChart, #historicalChart {
-                max-height: 300px; /* Constrain vertical height on large screens */
+                max-height: 300px; /* Override for a more compact desktop view */
             }
         }
     </style>
