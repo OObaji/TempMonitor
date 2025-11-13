@@ -1068,7 +1068,29 @@
             MAX_HUMIDITY = parseFloat(maxHumiSlider.value);
             
             console.log("New settings saved:", { MAX_TEMP, MIN_TEMP, MAX_HUMIDITY });
-            showToast("Settings saved successfully!");
+
+            // --- NEW: MQTT PUBLISHING LOGIC to update device thresholds ---
+            const commandTopic = MQTT_TOPIC + "/set_thresholds";
+            const settingsPayload = {
+                max_temp: MAX_TEMP,
+                min_temp: MIN_TEMP,
+                max_hum: MAX_HUMIDITY
+            };
+
+            try {
+                // Check if the MQTT client is initialized and connected before sending
+                if (typeof client !== 'undefined' && client.isConnected()) {
+                    client.send(commandTopic, JSON.stringify(settingsPayload), 0, false);
+                    showToast("Settings saved and thresholds sent to device!");
+                } else {
+                    showToast("Settings saved locally, but device connection is lost. Cannot send thresholds.");
+                    console.warn("MQTT client not connected. Could not publish thresholds.");
+                }
+            } catch (e) {
+                console.error("Failed to send SET_THRESHOLD command:", e);
+                showToast("Settings saved, but error sending command to device.");
+            }
+            // --- END NEW LOGIC ---
         });
         
         toggleEmail?.addEventListener('click', () => {
