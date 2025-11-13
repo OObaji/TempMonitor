@@ -1063,34 +1063,41 @@
         });
 
         saveSettingsBtn?.addEventListener('click', () => {
+            // 1. Update local state
             MAX_TEMP = parseFloat(maxTempSlider.value);
             MIN_TEMP = parseFloat(minTempSlider.value);
             MAX_HUMIDITY = parseFloat(maxHumiSlider.value);
             
             console.log("New settings saved:", { MAX_TEMP, MIN_TEMP, MAX_HUMIDITY });
 
-            // --- NEW: MQTT PUBLISHING LOGIC to update device thresholds ---
+            // --- MQTT PUBLISHING LOGIC to update device thresholds (Improved Robustness) ---
             const commandTopic = MQTT_TOPIC + "/set_thresholds";
             const settingsPayload = {
                 max_temp: MAX_TEMP,
                 min_temp: MIN_TEMP,
                 max_hum: MAX_HUMIDITY
             };
+            const payloadString = JSON.stringify(settingsPayload);
 
             try {
-                // Check if the MQTT client is initialized and connected before sending
                 if (typeof client !== 'undefined' && client.isConnected()) {
-                    client.send(commandTopic, JSON.stringify(settingsPayload), 0, false);
-                    showToast("Settings saved and thresholds sent to device!");
+                    // Explicitly create message object for robustness
+                    const message = new Paho.MQTT.Message(payloadString);
+                    message.destinationName = commandTopic;
+                    message.qos = 0; // QoS 0 (fire and forget)
+                    
+                    client.send(message);
+                    // IMPORTANT: We clarify to the user that they must wait for the device to respond.
+                    showToast("Settings saved and thresholds sent to device! Waiting for device status update..."); 
                 } else {
                     showToast("Settings saved locally, but device connection is lost. Cannot send thresholds.");
                     console.warn("MQTT client not connected. Could not publish thresholds.");
                 }
             } catch (e) {
                 console.error("Failed to send SET_THRESHOLD command:", e);
-                showToast("Settings saved, but error sending command to device.");
+                showToast("Settings saved, but error sending command to device. Check console for details.");
             }
-            // --- END NEW LOGIC ---
+            // --- END IMPROVED LOGIC ---
         });
         
         toggleEmail?.addEventListener('click', () => {
