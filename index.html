@@ -141,7 +141,7 @@
     <!-- Mobile Header (Visible on screens smaller than md) -->
     <header id="mobile-header" class="md:hidden bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-30">
         <div class="flex items-center space-x-2">
-            <i data-lucide="layout-dashboard" class="text-blue-600 w-5 h-5"></i>
+            <i data-lucide="layout-dashboard" class="w-5 h-5 text-blue-600"></i>
             <span class="text-lg font-bold text-slate-800">Smart Home</span>
         </div>
         <button id="mobile-menu-toggle" class="p-1 focus:outline-none">
@@ -709,7 +709,13 @@
             options: {
                 responsive: true,
                 scales: {
-                    x: {},
+                    x: {
+                        ticks: {
+                            autoSkip: true, // Essential for mobile to prevent label crowding
+                            maxRotation: 0, // Keeps labels flat for better reading
+                            minRotation: 0
+                        }
+                    },
                     yTemp: { 
                         type: 'linear',
                         position: 'left',
@@ -765,6 +771,7 @@
         // --- Function to create historical sample data ---
         function updateHistoricalChart(timeRange) {
             console.log(`Generating sample data for: ${timeRange}`);
+            const now = new Date();
             const newLabels = [];
             const newTempData = [];
             const newHumData = [];
@@ -775,32 +782,57 @@
                 for (let i = 0; i < numPoints; i++) {
                     let seasonalEffect = Math.sin((i / (numPoints / seasonalFactor)) * Math.PI) * 8 + baseVal;
                     let randomNoise = (Math.random() - 0.5) * noise;
-                    data.push((seasonalEffect + randomNoise).toFixed(1));
+                    data.push(parseFloat((seasonalEffect + randomNoise).toFixed(1)));
                 }
                 return data;
             };
 
+            // --- Updated logic for detailed and readable date labels ---
             switch (timeRange) {
-                case 'hour':
-                    for (let i = 0; i < 60; i += 5) { newLabels.push(`-${60-i}m`); } // Labels: -60m, -55m...
-                    newTempData.push(...generateTrend(12, 22, 1, 1));
-                    newHumData.push(...generateTrend(12, 45, 1, 3));
+                case 'hour': // Last 6 hours, sampled every 30 minutes (12 points)
+                    const hourPoints = 12;
+                    // Format: "14:30"
+                    const dateHourFormatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: false }); 
+                    for (let i = hourPoints - 1; i >= 0; i--) {
+                        const date = new Date(now.getTime() - i * 30 * 60000); // Backwards 30 mins
+                        newLabels.push(dateHourFormatter.format(date));
+                    }
+                    newTempData.push(...generateTrend(hourPoints, 22, 1, 1));
+                    newHumData.push(...generateTrend(hourPoints, 45, 1, 3));
                     break;
-                case 'day':
-                    for (let i = 0; i < 24; i += 2) { newLabels.push(`${String(i).padStart(2, '0')}:00`); } // Labels: 00:00, 02:00...
-                    newTempData.push(...generateTrend(12, 20, 1, 2));
-                    newHumData.push(...generateTrend(12, 50, 1, 5));
+                case 'day': // Last 7 days, sampled once per day (7 points)
+                    const dayPoints = 7;
+                    // Format: "Thu, Nov 13"
+                    const dateDayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    for (let i = dayPoints - 1; i >= 0; i--) {
+                        const date = new Date(now.getTime() - i * 24 * 60 * 60000); // Backwards 1 day
+                        newLabels.push(dateDayFormatter.format(date));
+                    }
+                    newTempData.push(...generateTrend(dayPoints, 20, 1, 2));
+                    newHumData.push(...generateTrend(dayPoints, 50, 1, 5));
                     break;
-                case 'month':
-                    for (let i = 1; i <= 30; i += 3) { newLabels.push(`Day ${i}`); } // Labels: Day 1, Day 4...
-                    newTempData.push(...generateTrend(10, 18, 2, 3));
-                    newHumData.push(...generateTrend(10, 55, 2, 5));
+                case 'month': // Last 12 months, sampled once per month (12 points)
+                    const monthPoints = 12;
+                    // Format: "Nov 2025"
+                    const dateMonthFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' });
+                    for (let i = monthPoints - 1; i >= 0; i--) {
+                        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        newLabels.push(dateMonthFormatter.format(date));
+                    }
+                    newTempData.push(...generateTrend(monthPoints, 18, 2, 3));
+                    newHumData.push(...generateTrend(monthPoints, 55, 2, 5));
                     break;
-                case 'year':
+                case 'year': // Last 5 years, sampled once per year (5 points)
                 default:
-                    newLabels.push('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
-                    newTempData.push(...generateTrend(12, 15, 2, 2)); // Strong seasonal trend
-                    newHumData.push(...generateTrend(12, 50, 1, 5));
+                    const yearPoints = 5;
+                    // Format: "2025"
+                    const dateYearFormatter = new Intl.DateTimeFormat('en-US', { year: 'numeric' });
+                    for (let i = yearPoints - 1; i >= 0; i--) {
+                        const date = new Date(now.getFullYear() - i, 0, 1);
+                        newLabels.push(dateYearFormatter.format(date));
+                    }
+                    newTempData.push(...generateTrend(yearPoints, 15, 2, 2)); // Strong seasonal trend
+                    newHumData.push(...generateTrend(yearPoints, 50, 1, 5));
                     break;
             }
 
